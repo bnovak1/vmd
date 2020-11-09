@@ -21,7 +21,7 @@ proc Orient::sel_com { sel weights } {
     set y [ $sel get y ]
     set z [ $sel get z ]
     set m $weights
-    
+
     set comx 0
     set comy 0
     set comz 0
@@ -57,7 +57,7 @@ proc Orient::sel_it { sel COM weights} {
     foreach xx $x yy $y zz $z mm $m {
         # use the abs of the weights
         set mm [expr abs($mm)]
-        
+
         # subtract the COM
         set xx [expr $xx - [lindex $COM 0]]
         set yy [expr $yy - [lindex $COM 1]]
@@ -73,7 +73,7 @@ proc Orient::sel_it { sel COM weights} {
         set Izz [expr $Izz + $mm*($xx*$xx+$yy*$yy)]
 
     }
-    
+
     return [list 2 3 3 $Ixx $Ixy $Ixz $Ixy $Iyy $Iyz $Ixz $Iyz $Izz]
 }
 
@@ -89,7 +89,7 @@ proc vmd_draw_arrow {mol start end} {
 proc vmd_draw_vector { mol pos val } {
     set end   [ vecadd $pos [ vecscale +1 $val ] ]
     vmd_draw_arrow $mol $pos $end
-}    
+}
 
 # find the max of some numbers
 proc Orient::max { args } {
@@ -133,8 +133,33 @@ proc vmd_draw_principalaxes { mol sel {weights domass} } {
     graphics $mol text [vecadd $COM [vecscale $scale2 $a1]] "1"
     graphics $mol text [vecadd $COM [vecscale $scale2 $a2]] "2"
     graphics $mol text [vecadd $COM [vecscale $scale2 $a3]] "3"
-    
+
     return [list $a1 $a2 $a3]
+}
+
+proc vmd_draw_principalaxis { mol sel axis_num {weights domass} } {
+    if { $weights == "domass" } {
+        set weights [ $sel get mass ]
+    }
+
+    set I [Orient::calc_principalaxes $sel $weights]
+    set axis [lindex $I $axis_num]
+
+    # find the size of the system
+    set minmax [measure minmax $sel]
+    set ranges [vecsub [lindex $minmax 1] [lindex $minmax 0]]
+    set scale [expr .7*[Orient::max [lindex $ranges 0] \
+                             [lindex $ranges 1] \
+                             [lindex $ranges 2]]]
+    set scale2 [expr 1.02 * $scale]
+
+    # draw some nice vectors
+    graphics $mol delete all
+    graphics $mol color yellow
+    set COM [Orient::sel_com $sel $weights]
+    vmd_draw_vector $mol $COM [vecscale $scale $axis]
+
+    return [list $axis]
 }
 
 # returns the three principal axes
@@ -179,21 +204,21 @@ proc Orient::orient { sel vector1 vector2 {weights domass}} {
     set sine   [veclength $rotvec]
     set cosine [vecdot $vec1 $vec2]
     set angle [expr atan2($sine,$cosine)]
-    
+
     # return the rotation matrix
     return [trans center $COM axis $rotvec $angle rad]
 }
 
 proc Orient::calc_rgyr {sel {weights domass} } {
-    
+
     if { $weights == "domass" } {
         set weights [ $sel get mass ]
     }
     set sum_weights [vecsum $weights]
-    
+
     # get moments of inertia around principal axes
     set moi [lrange [lindex [Orient::calc_principalaxes $sel $weights] 3] 3 5]
-    
+
     # radii of gyration (rx, ry, rz)
     set rgyr {}
     set idir 0
@@ -201,13 +226,13 @@ proc Orient::calc_rgyr {sel {weights domass} } {
         lappend rgyr [expr {sqrt([lindex $moi $idir]/$sum_weights)}]
         incr idir
     }
-    
+
     # radius of gyration
     lappend rgyr [expr {sqrt([veclength2 $rgyr]/2.0)}]
-    
+
     # convert to nm
     set rgyr [vecscale 0.1 $rgyr]
-    
+
     return $rgyr
-    
+
 }
