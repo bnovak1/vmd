@@ -1,3 +1,7 @@
+# Extension of Orient package. See https://www.ks.uiuc.edu/Research/vmd/script_library/scripts/orient/.
+# Added vmd_draw_principalaxis to plot a single specified principal axis.
+# Added Orient::calc_rgyr to compute the 3 principal radii of gyration.
+
 package provide Orient 1.0
 package require La
 
